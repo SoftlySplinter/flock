@@ -43,7 +43,7 @@ function Bird(x, y, flock) {
 
   this.flock = flock;
 
-  this.cohesion = 250;
+  this.cohesion = 100;
 }
 
 Bird.prototype.calcSpeed = function(acceleration) {
@@ -117,8 +117,17 @@ Bird.prototype.render = function() {
   this.flock.ctx.fillRect(this.aim.x, this.aim.y, 2, 2);
 }
 
+Bird.prototype.normalise = function() {
+  if(this.next.x < 0) this.next.x += canvas.width;
+  if(this.next.y < 0) this.next.y += canvas.height;
+  if(this.next.x > canvas.width) this.next.x -= canvas.width;
+  if(this.next.y > canvas.height) this.next.y -= canvas.height;
+  //console.log("Normalised to ", this.next);
+}
+
 Bird.prototype.tick = function() {
   this.aim = this.flock.mean(this, this.cohesion);
+  this.cohesion = 20 * Math.min(this.flock.countNear(this, this.cohesion), 25);
   if(this.position.equals(this.aim)) {
     this.direction += MAX_TURN;
     r = Math.random();
@@ -130,6 +139,7 @@ Bird.prototype.tick = function() {
   }
   this.speed = this.calcSpeed(this.acceleration);
   this.next = CoOrdinate.calcMove(this.speed, this.direction, this.position);
+  this.normalise();
 }
 
 function Flock(ctx) {
@@ -161,6 +171,12 @@ Flock.prototype.mean = function(from, cohesion) {
   });
 
   return new CoOrdinate(Math.round(sumX / count), Math.round(sumY / count));
+}
+
+Flock.prototype.countNear = function(from, cohesion) {
+  return this.flock.filter(function(element) { 
+    return element.position.distance(from.position) <= Math.pow(cohesion, 2); }
+  ).length;
 }
 
 var flock;
