@@ -1,6 +1,6 @@
-const MIN_ACCELERATION = 1;
-const MAX_ACCELERATION = 3;
-const MAX_TURN = Math.PI/ 100;
+//const MIN_ACCELERATION = 1;
+//const MAX_ACCELERATION = 1;
+const MAX_TURN = Math.PI/ 25;
 
 
 function CoOrdinate(x, y) {
@@ -40,13 +40,13 @@ function Bird(x, y, flock) {
   this.direction = Math.random() * Math.PI * 2;
   this.nextDirection = this.direction;
 
-  this.acceleration = 1;
-  this.speed = this.calcSpeed(this.acceleration);
+//  this.acceleration = 1;
+  this.speed = 1//this.calcSpeed(this.acceleration);
 
   this.flock = flock;
 
-  this.separation = 10;
-  this.alignment = 100;
+  this.separation = 25;
+  this.alignment = 300;
   this.cohesion = 1000;
 }
 
@@ -91,7 +91,7 @@ Bird.prototype.calcAngle = function(from, to) {
   return Math.atan2(opp, adj) + Math.PI;
 }
 
-Bird.prototype.calcBestSpeed = function() {
+/*Bird.prototype.calcBestSpeed = function() {
   aDown = Math.max(MIN_ACCELERATION, this.acceleration - 1);
   aUp   = Math.min(MAX_ACCELERATION, this.acceleration + 1);
   speedDown = this.calcSpeed(aDown);
@@ -113,7 +113,7 @@ Bird.prototype.calcBestSpeed = function() {
   case dDown: return aDown;
   case dUp:   return aUp;
   }
-}
+}*/
 
 
 Bird.prototype.render = function() {
@@ -146,13 +146,16 @@ Bird.prototype.calcAim = function() {
   near = this.flock.within(this, this.separation);
   if(near.length > 0) {
     // Aim away
-    heading = new Aim(0, 0, "separation");
+    heading = new Aim(-1, -1, "separation");
+    distance = Number.MAX_VALUE;
     near.forEach(function(elem) {
-      heading.x += elem.position.x;
-      heading.y += elem.position.y;
-    });
-    heading.x /= near.length;
-    heading.y /= near.length;
+      dX = elem.position.distance(this);
+      if(Math.abs(dX) < Math.abs(distance)) {
+        distance = dX;
+        heading.x = elem.position.x;
+        heading.y = elem.position.y;
+      }
+    }, this.position);
 
     heading.x = this.position.x + (this.position.x - heading.x);
     heading.y = this.position.y + (this.position.y - heading.y);
@@ -192,8 +195,8 @@ Bird.prototype.tick = function() {
   this.aim = this.calcAim();
 //  this.aim = this.flock.mean(this, this.cohesion);
   this.nextDirection = this.calcDirection();
-  this.acceleration = this.calcBestSpeed();
-  this.speed = this.calcSpeed(this.acceleration);
+//  this.acceleration = this.calcBestSpeed();
+//  this.speed = this.calcSpeed(this.acceleration);
   this.next = CoOrdinate.calcMove(this.speed, this.direction, this.position);
   this.normalise();
 }
@@ -246,7 +249,7 @@ var canvas;
 
 function init(ctx) {
   flock = new Flock(ctx);
-  for(var i = 0; i < 200; i++) {
+  for(var i = 0; i < 50; i++) {
     x = Math.floor(Math.random() * canvas.width);
     y = Math.floor(Math.random() * canvas.height);
     flock.flock.push(new Bird(x, y, flock));
