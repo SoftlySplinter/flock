@@ -1,5 +1,5 @@
 const MIN_ACCELERATION = 1;
-const MAX_ACCELERATION = 4;
+const MAX_ACCELERATION = 3;
 const MAX_TURN = Math.PI/ 100;
 
 
@@ -24,11 +24,12 @@ CoOrdinate.calcMove = function(speed, dir, pos) {
   return new CoOrdinate(speed * Math.cos(dir) + pos.x, speed * Math.sin(dir) + pos.y);
 }
 
-function Aim(x, y) {
+function Aim(x, y, type) {
   CoOrdinate.call(this, x, y);
+  this.type = type;
 }
 
-Aim.prototype = new CoOrdinate();
+Aim.prototype = CoOrdinate.prototype;
 
 function Bird(x, y, flock) {
   this.position = new CoOrdinate(x, y);
@@ -37,13 +38,16 @@ function Bird(x, y, flock) {
   this.target = new Aim(x, y);
 
   this.direction = Math.random() * Math.PI * 2;
+  this.nextDirection = this.direction;
 
   this.acceleration = 1;
   this.speed = this.calcSpeed(this.acceleration);
 
   this.flock = flock;
 
-  this.cohesion = 100;
+  this.separation = 10;
+  this.alignment = 100;
+  this.cohesion = 1000;
 }
 
 Bird.prototype.calcSpeed = function(acceleration) {
@@ -113,14 +117,22 @@ Bird.prototype.calcBestSpeed = function() {
 
 
 Bird.prototype.render = function() {
-  if(this.next != null) {
-    this.position = new CoOrdinate(this.next.x, this.next.y);
-  }
+  this.position = new CoOrdinate(this.next.x, this.next.y);
+  this.direction = this.nextDirection;
+  
 
   this.flock.ctx.fillStyle = "rgb(255,255,255)";
-  this.flock.ctx.fillRect(this.position.x, this.position.y, 2, 2);
-//  this.flock.ctx.fillStyle = "rgb(0,255,0)";
-//  this.flock.ctx.fillRect(this.aim.x, this.aim.y, 2, 2);
+  this.flock.ctx.fillRect(this.position.x, this.position.y, 1, 1);
+  if(this.aim.type == "separation") {
+    this.flock.ctx.fillStyle = "rgb(200, 0, 0)";
+  } else if(this.aim.type == "alignment") {
+    this.flock.ctx.fillStyle = "rgb(0, 200, 0)";
+  } else if(this.aim.type == "cohesion") {
+    this.flock.ctx.fillStyle = "rgb(0, 0, 200)";
+  } else {
+    this.flock.ctx.fillStyle = "rgb(100, 100, 100)";
+  }
+//  this.flock.ctx.fillRect(this.aim.x, this.aim.y, 1, 1);
 }
 
 Bird.prototype.normalise = function() {
@@ -130,18 +142,57 @@ Bird.prototype.normalise = function() {
   if(this.next.y > canvas.height) this.next.y -= canvas.height;
 }
 
+Bird.prototype.calcAim = function() {
+  near = this.flock.within(this, this.separation);
+  if(near.length > 0) {
+    // Aim away
+    heading = new Aim(0, 0, "separation");
+    near.forEach(function(elem) {
+      heading.x += elem.position.x;
+      heading.y += elem.position.y;
+    });
+    heading.x /= near.length;
+    heading.y /= near.length;
+
+    heading.x = this.position.x + (this.position.x - heading.x);
+    heading.y = this.position.y + (this.position.y - heading.y);
+    
+    return heading;
+  }
+
+  mid = this.flock.within(this, this.alignment);
+  if(mid.length > 0) {
+    // Aim towards average heading.
+    heading = new Aim(0, 0, "alignment");
+    mid.forEach(function(elem) {
+      heading.x += elem.speed * Math.cos(elem.direction) + elem.position.x;
+      heading.y += elem.speed * Math.sin(elem.direction) + elem.position.y;
+    });
+    heading.x /= (mid.length);
+    heading.y /= (mid.length);
+    return heading;
+  }
+
+  far = this.flock.within(this, this.cohesion);
+  if(far.length > 0) {
+    heading = new Aim(0, 0, "cohesion");
+    far.forEach(function(elem) {
+      heading.x += elem.position.x;
+      heading.y += elem.position.y;
+    });
+    heading.x /= far.length;
+    heading.y /= far.length;
+    return heading;
+  }
+
+  return this.position;
+}
+
 Bird.prototype.tick = function() {
-  this.aim = this.flock.mean(this, this.cohesion);
-  this.cohesion = 20 * Math.min(this.flock.countNear(this, this.cohesion), 25);
-//  if(this.position.equals(this.aim)) {
-//    this.direction += MAX_TURN;
-//    r = Math.random();
-//    if(r < 0.3) this.acceleration = Math.max(MIN_ACCELERATION, this.acceleration - 1);
-//    if(r > 0.3) this.acceleration = Math.min(MAX_ACCELERATION, this.acceleration + 1);
-//  } else {
-    this.direction = this.calcDirection();
-    this.acceleration = this.calcBestSpeed();
-//  }
+  this.aim = this.calcAim();
+//  this.aim = this.flock.mean(this, this.cohesion);
+  this.nextDirection = this.calcDirection();
+  this.acceleration = this.calcBestSpeed();
   this.speed = this.calcSpeed(this.acceleration);
   this.next = CoOrdinate.calcMove(this.speed, this.direction, this.position);
   this.normalise();
@@ -178,6 +229,12 @@ Flock.prototype.mean = function(from, cohesion) {
   return new CoOrdinate(sumX / count, sumY / count);
 }
 
+Flock.prototype.within = function(bird, distance) {
+  return this.flock.filter(function(elem) {
+    return elem.position.distance(bird.position) <= Math.pow(distance, 2) && elem != bird;
+  });
+}
+
 Flock.prototype.countNear = function(from, cohesion) {
   return this.flock.filter(function(element) { 
     return element.position.distance(from.position) <= Math.pow(cohesion, 2); }
@@ -189,7 +246,7 @@ var canvas;
 
 function init(ctx) {
   flock = new Flock(ctx);
-  for(var i = 0; i < 100; i++) {
+  for(var i = 0; i < 200; i++) {
     x = Math.floor(Math.random() * canvas.width);
     y = Math.floor(Math.random() * canvas.height);
     flock.flock.push(new Bird(x, y, flock));
@@ -198,8 +255,7 @@ function init(ctx) {
 
 function draw() {
   canvas = document.getElementById('swarm');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  update();
   if(canvas.getContext) {
     init(canvas.getContext('2d'));
     setInterval(function() {
@@ -211,3 +267,9 @@ function draw() {
   }
 }
 
+window.onresize = update;
+
+function update() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
