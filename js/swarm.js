@@ -46,8 +46,8 @@ function Bird(x, y, flock) {
   this.flock = flock;
 
   this.separation = 25;
-  this.alignment = 300;
-  this.cohesion = 1000;
+  this.alignment = 250;
+  this.cohesion = Number.MAX_VALUE;
 }
 
 Bird.prototype.calcSpeed = function(acceleration) {
@@ -132,7 +132,7 @@ Bird.prototype.render = function() {
   } else {
     this.flock.ctx.fillStyle = "rgb(100, 100, 100)";
   }
-//  this.flock.ctx.fillRect(this.aim.x, this.aim.y, 1, 1);
+  this.flock.ctx.fillRect(this.aim.x, this.aim.y, 1, 1);
 }
 
 Bird.prototype.normalise = function() {
@@ -249,7 +249,10 @@ var canvas;
 
 function init(ctx) {
   flock = new Flock(ctx);
-  for(var i = 0; i < 50; i++) {
+  no = Math.round((canvas.width * canvas.height) / 2500);
+  document.title = "Flock (" + no + " birds)";
+  document.getElementById('info').innerHTML = document.title;
+  for(var i = 0; i < no; i++) {
     x = Math.floor(Math.random() * canvas.width);
     y = Math.floor(Math.random() * canvas.height);
     flock.flock.push(new Bird(x, y, flock));
@@ -270,7 +273,7 @@ function draw() {
   }
 }
 
-window.onresize = update;
+window.onresize = draw;
 
 function update() {
   canvas.width = window.innerWidth;

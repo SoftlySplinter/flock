@@ -2,3 +2,16 @@
   padding: 0px;
   margin: 0px;
 }
+
+#swarm {
+  background: black;
+  position: absolute;
+  z-index: -1;
+}
+
+#info {
+  color: white;
+  position: absolute
+  top: 0px;
+  left: 0px;
+}
