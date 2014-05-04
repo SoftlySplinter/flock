@@ -122,7 +122,7 @@ Bird.prototype.render = function() {
   
 
   this.flock.ctx.fillStyle = "rgb(255,255,255)";
-  this.flock.ctx.fillRect(this.position.x, this.position.y, 1, 1);
+  this.flock.ctx.fillRect(this.position.x, this.position.y, 2, 2);
   if(this.aim.type == "separation") {
     this.flock.ctx.fillStyle = "rgb(200, 0, 0)";
   } else if(this.aim.type == "alignment") {
